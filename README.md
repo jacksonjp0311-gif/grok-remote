@@ -1,5 +1,7 @@
 # Grok Remote
 
+> **Unofficial.** This is an independent open-source project. Not affiliated with, endorsed by, or sponsored by xAI. “Grok” is a trademark of xAI. If they ask us to change the name, we will.
+
 **The phone is the control plane. The desktop is the runtime.**
 
 One relay. One plugin. One connector. Steer Grok Build from any device with the Grok app while the agent runs on your machine.
