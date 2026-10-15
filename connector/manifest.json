@@ -1,0 +1,6 @@
+{
+  "name": "grok-remote",
+  "description": "Phone-steered Grok Build approvals",
+  "url": "http://localhost:3001/mcp",
+  "tools": ["approve", "deny", "queue_prompt", "get_status"]
+}

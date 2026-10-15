@@ -1,0 +1,11 @@
+{
+  "name": "grok-remote",
+  "version": "0.1.0",
+  "description": "Phone-steered Grok Build with governed approvals",
+  "main": "relay/server.js",
+  "scripts": {
+    "start": "node relay/server.js",
+    "install-plugin": "./install.sh"
+  },
+  "license": "MIT"
+}
