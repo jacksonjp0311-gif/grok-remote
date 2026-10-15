@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GROK REMOTE</title>
+  <style>
+    :root { color-scheme: dark; --bg: #070708; --ink: #eceae4; --dim: #8a877f; --line: #2a2a2c; --bad: #ff5c33; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); }
+    body { font: 15px/1.45 Consolas, ui-monospace, monospace; padding: 28px 16px 64px; }
+    main { width: min(560px, 100%); margin: 0 auto; }
+    pre { margin: 0; color: var(--dim); letter-spacing: 0.06em; white-space: pre; font: inherit; }
+    p { margin: 18px 0 0; }
+    #state { color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; font-size: 12px; }
+    #state.bad { color: var(--bad); text-transform: none; letter-spacing: 0; }
+    ol { list-style: none; margin: 18px 0 0; padding: 0; }
+    li { border-top: 1px solid var(--line); padding: 14px 0; }
+    .name { letter-spacing: 0.12em; text-transform: uppercase; }
+    .detail { color: var(--dim); margin: 8px 0 0; white-space: pre-wrap; word-break: break-word; }
+    .actions, form { display: flex; gap: 10px; }
+    .actions { margin-top: 12px; }
+    form { margin-top: 22px; }
+    button, input {
+      font: inherit; color: var(--ink); background: transparent;
+      border: 1px solid var(--ink); letter-spacing: 0.14em; text-transform: uppercase;
+    }
+    button { min-height: 48px; padding: 0 16px; }
+    input { flex: 1; min-width: 0; padding: 12px; text-transform: none; letter-spacing: 0; }
+  </style>
+</head>
+<body>
+<main>
+<pre>
+┌────────────────────────────────────────────┐
+│  G R O K   R E M O T E                      │
+│  portal                                     │
+│                                            │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━      │
+│                                            │
+│  approve · deny · queue · audit            │
+└────────────────────────────────────────────┘
+</pre>
+<p id="state">looking for the desktop</p>
+<ol id="calls"></ol>
+<form id="queue">
+  <input id="text" name="text" autocomplete="off" placeholder="tell the desktop" />
+  <button type="submit">send</button>
+</form>
+</main>
+<script>
+const token = "dev-token";
+const state = document.getElementById("state");
+const calls = document.getElementById("calls");
+let origin = "";
+
+function detail(input) {
+  const text = JSON.stringify(input || {}, null, 2);
+  return text.length > 500 ? text.slice(0, 500) + "…" : text;
+}
+
+async function api(path, body) {
+  const res = await fetch(origin + path, {
+    method: body ? "POST" : "GET",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    cache: "no-store",
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(String(res.status));
+  return res.json();
+}
+
+async function loadOrigin() {
+  const res = await fetch("endpoint.json?t=" + Date.now(), { cache: "no-store" });
+  if (!res.ok) throw new Error("no endpoint");
+  const data = await res.json();
+  if (!data.origin) throw new Error("desktop has not published");
+  origin = data.origin.replace(/\/$/, "");
+}
+
+async function decide(id, decision) {
+  await api("/decision", { id, decision });
+  tick();
+}
+
+async function tick() {
+  try {
+    if (!origin) await loadOrigin();
+    const data = await api("/status");
+    state.className = "";
+    state.textContent = "desktop linked";
+    const pending = data.pending || [];
+    calls.replaceChildren();
+    pending.forEach((call) => {
+      const li = document.createElement("li");
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = call.toolName || "tool";
+      const info = document.createElement("pre");
+      info.className = "detail";
+      info.textContent = detail(call.toolInput);
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      for (const [label, decision] of [["approve", "allow"], ["deny", "deny"]]) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label;
+        button.addEventListener("click", () => decide(call.id, decision));
+        actions.appendChild(button);
+      }
+      li.append(name, info, actions);
+      calls.appendChild(li);
+    });
+  } catch (error) {
+    origin = "";
+    state.className = "bad";
+    state.textContent = error.message === "Failed to fetch" ? "desktop unreachable" : error.message;
+  }
+}
+
+document.getElementById("queue").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = document.getElementById("text");
+  const text = input.value.trim();
+  if (!text) return;
+  await api("/prompt", { text });
+  input.value = "";
+  state.textContent = "sent to the desktop";
+});
+
+tick();
+setInterval(tick, 3000);
+</script>
+</body>
+</html>
